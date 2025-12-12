@@ -1,36 +1,64 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:treasure_game_v4/models/game_state.dart';
 import 'package:treasure_game_v4/utils/functions.dart';
 
 class FirestoreListener {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
-  static bool _initialized = false;
-  static bool _riddlesInitialized = false;
-  static bool _userInitialized = false;
 
+  static StreamSubscription? gameStatesSub;
+  static StreamSubscription? riddlesSub;
+  static StreamSubscription? userSub;
+
+  // Call once at app launch
   static void init() {
-    if (_initialized) return;
-    _initialized = true;
     _listenToGameStates();
   }
 
-  static void listenToRiddles() {
-    if (_riddlesInitialized) return;
-    _riddlesInitialized = true;
-    _listenToRiddlesData();
+  // Call when user logs in or changes
+  static void listenToUser(String userId) {
+    if (userSub != null) userSub!.cancel();
+
+    userSub = _db.collection("users").doc(userId).snapshots().listen((snapshot) {
+      if (!snapshot.exists) return;
+      final data = snapshot.data()!;
+      
+      AppState.completedRiddles.value = data['completedRiddles'];
+      AppState.currentRiddleIndex.value = data['currentRiddleIndex'];
+      AppState.hasWon.value = data['hasWon'];
+      AppState.isGamePassEnable.value = data['isGamePassEnable'];
+      AppState.isGameLost.value = data['isLost'];
+      AppState.isPaymentVerified.value = data['isPaymentVerified'];
+      AppState.paymentStatus.value = data['paymentStatus'];
+      AppState.triesLeft.value = data['triesLeft'];
+    });
   }
-  
-  static void listenToUser() {
-    if (_userInitialized) return;
-    _userInitialized = true;
-    _listenToUserData();
+
+  static void listenToRiddles() {
+    if (riddlesSub != null) riddlesSub!.cancel();
+
+    riddlesSub = _db.collection("gameData").doc("riddleData")
+        .snapshots().listen((snapshot) {
+
+      if (!snapshot.exists) return;
+      final data = snapshot.data()!;
+      AppState.riddlesData.value = data;
+      AppState.totalRiddles.value = data['totalRiddles'];
+      AppState.totalIndex.value = data['totalIndex'];
+    });
   }
 
   static void _listenToGameStates() {
-    _db.collection("gameData").doc("gameStates").snapshots().listen((snapshot) {
-      print('data updated on the server GameStates');
+    if (gameStatesSub != null) gameStatesSub!.cancel();
+
+    gameStatesSub = _db.collection("gameData").doc("gameStates")
+        .snapshots(includeMetadataChanges: true)
+        .listen((snapshot) {
+
       if (!snapshot.exists) return;
       final data = snapshot.data()!;
+
       AppState.gameStartTime.value = data['gameStartTime'];
       AppState.gameEndTime.value = data['gameEndTime'];
       AppState.gamePassBuyStartTime.value = data['gamePassBuyStartTime'];
@@ -43,43 +71,25 @@ class FirestoreListener {
       AppState.playersLable.value = data['playersLable'];
       AppState.timerLable.value = data['timerLable'];
       AppState.winnerName.value = data['winnerName'];
+      AppState.winnerId.value = data['winnerId'];
+      AppState.trapRadius.value = data['trapRadius'].toDouble();
+      AppState.trapCoordinates.value = data['trapCoordinates'];
+      AppState.warnStartRadius.value = data['warnStartRadius'].toDouble();
 
-      bool isBuyingEnable_T = data['isBuyingEnable'];
+      bool isBuying = data['isBuyingEnable'];
+      if(AppState.isGameEnded.value && AppState.winnerId.value != AppState.userId.value){
+        setLoggedOut();
+        AppState.currentGameState.value = GameState.ended;
+      }
 
       DynamicTimer.startTimer(
-        startTime: isBuyingEnable_T
+        startTime: isBuying
             ? AppState.gamePassBuyStartTime.value.toDate()
             : AppState.gameStartTime.value.toDate(),
-        endTime: isBuyingEnable_T
+        endTime: isBuying
             ? AppState.gamePassBuyEndTime.value.toDate()
             : AppState.gameEndTime.value.toDate(),
       );
-    });
-  }
-
-  static void _listenToRiddlesData() {
-    _db.collection("gameData").doc("riddleData").snapshots().listen((snapshot) {
-      print('data updated on the server RiddlesData');
-      if (!snapshot.exists) return;
-      final data = snapshot.data()!;
-      AppState.riddlesData.value = data;
-    });
-  }
-
-  static void _listenToUserData() {
-    _db.collection("users").doc("users").snapshots().listen((snapshot) {
-      print('data updated on the server UserData');
-      if (!snapshot.exists) return;
-      final data = snapshot.data()!;
-      AppState.completedRiddles.value = data['completedRiddles'];
-      AppState.currentRiddleIndex.value = data['currentRiddleIndex'];
-      AppState.hasWon.value = data['hasWon'];
-      AppState.isGamePassEnable.value = data['isGamePassEnable'];
-      AppState.isGameLost.value = data['isLost'];
-      AppState.isPaymentVerified.value = data['isPaymentVerified'];
-      AppState.paymentStatus.value = data['paymentStatus'];
-      AppState.totalRiddles.value = data['totalRiddles'];
-
     });
   }
 }

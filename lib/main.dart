@@ -1,5 +1,7 @@
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:treasure_game_v4/utils/firebase_listner.dart';
+import 'package:treasure_game_v4/screens/loading_screen.dart';
 import 'package:treasure_game_v4/utils/functions.dart';
 import 'models/game_state.dart';
 import 'screens/index.dart';
@@ -9,14 +11,17 @@ import 'utils/map_element_overlay.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-);
-  FirestoreListener.init();
-  checkIfLoggedIn();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: false,
+  );
+
   runApp(const TreasureHuntApp());
+
+  await initSoundResources();
 }
 
 class TreasureHuntApp extends StatelessWidget {
@@ -28,7 +33,7 @@ class TreasureHuntApp extends StatelessWidget {
       title: 'Treasure Hunt',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFE8DCC5), 
+        scaffoldBackgroundColor: const Color(0xFFE8DCC5),
         primaryColor: const Color(0xFF3E2723),
         useMaterial3: true,
       ),
@@ -45,11 +50,14 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  GameState _currentState = GameState.landing;
-
-  void _navigateTo(GameState state) {
-    setState(() {
-      _currentState = state;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      InternetUtils.initialize(context);
+    });
+    AppState.currentGameState.addListener(() {
+      setState(() {});
     });
   }
 
@@ -60,16 +68,14 @@ class _MainScreenState extends State<MainScreen> {
         children: [
           Container(color: const Color(0xFFE8DCC5)),
           const Positioned.fill(child: NoiseOverlay()),
-
           const VignetteOverlay(),
-
           const MapElementOverlay(),
 
           SafeArea(
             child: Center(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 700),
-                child: _buildScreen(),
+                child: _buildScreen(AppState.currentGameState.value),
               ),
             ),
           ),
@@ -89,14 +95,35 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildScreen() {
-    switch (_currentState) {
+  Widget _buildScreen(GameState state) {
+    switch (state) {
+      case GameState.loading:
+        return const LoadingScreen();
+
       case GameState.landing:
-        return LandingScreen(onEnter: () => _navigateTo(GameState.playing));
+        return LandingScreen(
+          onEnter: () => AppState.currentGameState.value = GameState.playing,
+        );
+
       case GameState.playing:
-        return GameScreen(onWin: () => _navigateTo(GameState.victory));
+        return GameScreen(
+          onWin: () => AppState.currentGameState.value = GameState.victory,
+        );
+
       case GameState.victory:
-        return VictoryScreen(onRestart: () => _navigateTo(GameState.landing));
+        return VictoryScreen(
+          onRestart: () => AppState.currentGameState.value = GameState.landing,
+        );
+
+      case GameState.ended:
+        return GameEndedScreen(
+          onContinue: () => AppState.currentGameState.value = GameState.landing,
+        );
+
+      case GameState.lost:
+        return GameLostScreen(
+          onContinue: () => AppState.currentGameState.value = GameState.landing,
+        );
     }
   }
 }

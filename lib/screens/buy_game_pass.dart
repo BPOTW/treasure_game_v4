@@ -6,6 +6,7 @@ import 'package:treasure_game_v4/components/noise_overlay.dart';
 import 'package:treasure_game_v4/components/parchment_container.dart';
 import 'package:treasure_game_v4/components/wood_button.dart';
 import 'package:treasure_game_v4/models/game_state.dart';
+import 'package:treasure_game_v4/utils/firebase_listner.dart';
 import 'package:treasure_game_v4/utils/functions.dart';
 
 // --- Game Pass Purchase Screen ---
@@ -44,7 +45,8 @@ class _GamePassScreenState extends State<GamePassScreen> {
 
   void _updateValidationState() {
     setState(() {
-      personalDetails = _nameController.text.isNotEmpty &&
+      personalDetails =
+          _nameController.text.isNotEmpty &&
           _phoneController.text.isNotEmpty &&
           _emailController.text.isNotEmpty;
       transactionId = _txIdController.text.isNotEmpty;
@@ -71,12 +73,13 @@ class _GamePassScreenState extends State<GamePassScreen> {
     AppState.isGamePassEnable.value = false;
     AppState.totalRiddles.value = 0;
     AppState.completedRiddles.value = 0;
+    AppState.currentRiddleIndex.value = 1;
     AppState.currentRiddle.value = "";
     AppState.hasWon.value = false;
     AppState.isGameLost.value = false;
     AppState.storedGamePass.value = gamePass;
     bool res = await FirestoreService.addUser();
-
+    FirestoreListener.listenToUser(AppState.userId.value);
     res ? saveGamePassInStorage() : AppState.storedGamePass.value = "";
     return res;
   }
@@ -92,38 +95,43 @@ class _GamePassScreenState extends State<GamePassScreen> {
       if (mounted) {
         showLoader(context);
       }
-      bool res = await saveUserData();
-      if (mounted) {
-        hideLoader(context);
-      }
-      if (mounted && res) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: const Color(0xFF3E2723),
-            content: Text(
-              "Your payment will be verified soon...",
-              style: GoogleFonts.cinzelDecorative(
-                color: const Color(0xFFE8DCC5),
-              ),
-            ),
-          ),
-        );
-        Future.delayed(const Duration(seconds: 1), widget.onClose);
-      } else {
+      await InternetUtils.isInternetAvailable(context);
+      if (AppState.isConnectedToInternet.value) {
+        bool res = await saveUserData();
         if (mounted) {
+          hideLoader(context);
+        }
+        if (mounted && res) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: const Color(0xFF3E2723),
               content: Text(
-                "Something went wront. Try again",
+                "Your payment will be verified soon...",
                 style: GoogleFonts.cinzelDecorative(
                   color: const Color(0xFFE8DCC5),
                 ),
               ),
             ),
           );
+          Future.delayed(const Duration(seconds: 1), widget.onClose);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: const Color(0xFF3E2723),
+                content: Text(
+                  "Something went wront. Try again",
+                  style: GoogleFonts.cinzelDecorative(
+                    color: const Color(0xFFE8DCC5),
+                  ),
+                ),
+              ),
+            );
+          }
         }
       }
+
+      hideLoader(context);
     }
   }
 
@@ -288,7 +296,7 @@ class _GamePassScreenState extends State<GamePassScreen> {
             WoodButton(
               label: 'Proceed to Pay',
               isActive: personalDetails,
-              onTap: personalDetails ? _nextStep : (){},
+              onTap: personalDetails ? _nextStep : () {},
             ),
           ],
         ),
@@ -469,7 +477,11 @@ class _GamePassScreenState extends State<GamePassScreen> {
                 ),
 
                 const SizedBox(height: 40),
-                WoodButton(label: 'Verify Payment', isActive: transactionId, onTap: transactionId ? _nextStep : (){}),
+                WoodButton(
+                  label: 'Verify Payment',
+                  isActive: transactionId,
+                  onTap: transactionId ? _nextStep : () {},
+                ),
               ],
             ),
           ),
@@ -519,7 +531,9 @@ class _ThemedTextField extends StatelessWidget {
         ),
         TextField(
           controller: controller,
-          keyboardType: icon == Icons.phone ? TextInputType.number : TextInputType.text,
+          keyboardType: icon == Icons.phone
+              ? TextInputType.number
+              : TextInputType.text,
           decoration: InputDecoration(
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(vertical: 12),

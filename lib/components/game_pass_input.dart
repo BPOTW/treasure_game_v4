@@ -52,7 +52,7 @@ class _GamePassInputState extends State<GamePassInput> {
             }
             return TextField(
               controller: _controller,
-              readOnly: value,
+              // readOnly: value,
               onChanged: (value) => widget.enteredGamePass(value),
               textCapitalization: TextCapitalization.characters,
               autofillHints: null,

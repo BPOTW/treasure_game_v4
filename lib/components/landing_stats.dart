@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:treasure_game_v4/models/game_state.dart';
-import 'package:treasure_game_v4/utils/functions.dart';
 import 'stat_item.dart';
 
 class LandingStats extends StatefulWidget {
@@ -11,13 +10,6 @@ class LandingStats extends StatefulWidget {
 }
 
 class LandingStatsState extends State<LandingStats> {
-  final timerController = DynamicTimer();
-
-  @override
-  void dispose() {
-    timerController.stop();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {

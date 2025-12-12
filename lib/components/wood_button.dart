@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:treasure_game_v4/utils/functions.dart';
 
 class WoodButton extends StatelessWidget {
   final String label;
@@ -11,7 +12,9 @@ class WoodButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: (){
+        isActive ? AudioService().playSoundEffect('sfx/button-tap.ogg') : AudioService().playSoundEffect('sfx/disabled-button.ogg');
+        onTap();},
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 16),

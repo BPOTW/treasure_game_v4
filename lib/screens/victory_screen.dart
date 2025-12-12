@@ -40,7 +40,7 @@ class VictoryScreen extends StatelessWidget {
             child: Column(
               children: [
                  Text(
-                    '"Through ancient paths and riddles deep, you\'ve won the treasure the shadows keep."',
+                    "Congratulations! 🎉 You’ve won this thrilling game using your intelligence and strategy! The game has officially ended, and our team will contact you soon to process your prize.",
                     style: GoogleFonts.imFellEnglish(fontSize: 18, color: const Color(0xFF4E342E)),
                     textAlign: TextAlign.center,
                   ),
@@ -68,7 +68,7 @@ class VictoryScreen extends StatelessWidget {
           ),
           
           const SizedBox(height: 32),
-          WoodButton(label: 'Start New Expedition', onTap: onRestart),
+          WoodButton(label: 'Continue', onTap: onRestart),
         ],
       ),
     );
